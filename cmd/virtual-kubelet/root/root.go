@@ -99,6 +99,7 @@ func runRootCommand(ctx context.Context, c *Opts) error {
 		NodeIP:    os.Getenv("VKUBELET_POD_IP"),
 
 		LiqoIpamServer:       c.LiqoIpamServer,
+		RemoteLiqoIpamServer: c.RemoteLiqoIpamServer,
 		InformerResyncPeriod: c.InformerResyncPeriod,
 
 		PodWorkers:                  c.PodWorkers,

@@ -16,10 +16,12 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -55,6 +57,7 @@ type InitConfig struct {
 	NodeName             string
 	NodeIP               string
 	LiqoIpamServer       string
+	RemoteLiqoIpamServer string
 	InformerResyncPeriod time.Duration
 
 	PodWorkers                  uint
@@ -92,9 +95,24 @@ func NewLiqoProvider(ctx context.Context, cfg *InitConfig, eb record.EventBroadc
 		return nil, errors.Wrap(err, "failed to establish a connection to the IPAM")
 	}
 	ipamClient := ipam.NewIpamClient(connection)
+	var remoteIpamClient ipam.IpamClient
+	if cfg.RemoteLiqoIpamServer != "" {
+		dialctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+		remoteIpamServer := cfg.RemoteLiqoIpamServer
+		if remoteIpamServer == "" {
+			remoteIpamServer = fmt.Sprintf("liqo-network-manager.liqo-%s:%d", cfg.RemoteCluster.ClusterID, 6000)
+		}
+		connection, err = grpc.DialContext(dialctx, remoteIpamServer, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		cancel()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to establish a connection to the remote IPAM")
+		}
+		remoteIpamClient = ipam.NewIpamClient(connection)
+	}
 
 	reflectionManager := manager.New(homeClient, foreignClient, homeLiqoClient, foreignLiqoClient, cfg.InformerResyncPeriod, eb)
-	podreflector := workload.NewPodReflector(cfg.RemoteConfig, foreignMetricsClient.MetricsV1beta1().PodMetricses, ipamClient, cfg.PodWorkers)
+	podreflector := workload.NewPodReflector(cfg.RemoteConfig, foreignMetricsClient.MetricsV1beta1().PodMetricses,
+		ipamClient, remoteIpamClient, cfg.PodWorkers)
 	namespaceMapHandler := namespacemap.NewHandler(homeLiqoClient, cfg.Namespace, cfg.InformerResyncPeriod)
 	reflectionManager.
 		With(exposition.NewServiceReflector(cfg.ServiceWorkers)).

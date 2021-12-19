@@ -35,6 +35,7 @@ func InstallFlags(flags *pflag.FlagSet, o *Opts) {
 	flags.StringVar(&o.ForeignCluster.ClusterID, "foreign-cluster-id", o.ForeignCluster.ClusterID, "The ID of the foreign cluster")
 	flags.StringVar(&o.ForeignCluster.ClusterName, "foreign-cluster-name", o.ForeignCluster.ClusterName, "The name of the foreign cluster")
 	flags.StringVar(&o.LiqoIpamServer, "ipam-server", o.LiqoIpamServer, "The address to contact the IPAM module")
+	flags.StringVar(&o.RemoteLiqoIpamServer, "remote-ipam-server", o.RemoteLiqoIpamServer, "The address of the remote IPAM module")
 
 	flags.Uint16Var(&o.ListenPort, "listen-port", o.ListenPort, "The port to listen to for requests from the Kubernetes API server")
 	flags.StringVar(&o.MetricsAddress, "metrics-address", o.MetricsAddress, "Address to listen for metrics/stats requests")
